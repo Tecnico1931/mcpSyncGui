@@ -106,6 +106,16 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/download-binaries.sh
 
+      # Universal macOS sidecar: lipo arm64 + x64 into one fat binary
+      - name: Create universal rulesync sidecar binary
+        if: matrix.platform == 'macos-latest'
+        run: |
+          lipo -create \
+            src-tauri/binaries/rulesync-aarch64-apple-darwin \
+            src-tauri/binaries/rulesync-x86_64-apple-darwin \
+            -output src-tauri/binaries/rulesync-universal-apple-darwin
+          chmod +x src-tauri/binaries/rulesync-universal-apple-darwin
+
       # ── Build & release ───────────────────────────────────────────────────
       - name: Build and publish release
         uses: tauri-apps/tauri-action@v0
