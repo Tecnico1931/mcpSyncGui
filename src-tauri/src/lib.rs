@@ -70,6 +70,45 @@ fn which_rulesync() -> Option<String> {
     find_rulesync_in_path().map(|p| p.to_string_lossy().to_string())
 }
 
+/// Runs `rulesync --version` and returns the trimmed version string.
+/// Tries the system PATH binary first, then the bundled sidecar.
+#[tauri::command]
+async fn get_rulesync_version(app: AppHandle) -> Option<String> {
+    use tauri_plugin_shell::ShellExt;
+    use tauri_plugin_shell::process::CommandEvent;
+
+    // Try system PATH binary (synchronous — fast)
+    if let Some(binary) = find_rulesync_in_path() {
+        if let Ok(output) = std::process::Command::new(&binary)
+            .arg("--version")
+            .output()
+        {
+            let v = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !v.is_empty() {
+                return Some(v);
+            }
+        }
+    }
+
+    // Fall back to bundled sidecar
+    let sidecar = app.shell().sidecar("rulesync").ok()?.args(["--version"]);
+    let (mut rx, _child) = sidecar.spawn().ok()?;
+
+    while let Some(event) = rx.recv().await {
+        match event {
+            CommandEvent::Stdout(bytes) => {
+                let v = String::from_utf8_lossy(&bytes).trim().to_string();
+                if !v.is_empty() {
+                    return Some(v);
+                }
+            }
+            CommandEvent::Terminated(_) => break,
+            _ => {}
+        }
+    }
+    None
+}
+
 fn find_rulesync_in_path() -> Option<std::path::PathBuf> {
     let name = if cfg!(windows) { "rulesync.exe" } else { "rulesync" };
     std::env::var_os("PATH").and_then(|path_var| {
@@ -294,6 +333,7 @@ pub fn run() {
             get_home_dir,
             find_rulesync_configs,
             which_rulesync,
+            get_rulesync_version,
             // file system
             open_directory,
             read_file,

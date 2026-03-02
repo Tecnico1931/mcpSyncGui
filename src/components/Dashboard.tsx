@@ -7,6 +7,7 @@ import {
   revealInFinder,
   runRulesync,
   whichRulesync,
+  getRulesyncVersion,
 } from "../lib/tauri";
 import type { RulesyncConfig } from "../types";
 
@@ -25,17 +26,41 @@ export default function Dashboard() {
   const [hasConfig, setHasConfig] = useState<boolean | null>(null);
   const [cfg, setCfg] = useState<RulesyncConfig | null>(null);
   const [rulesyncSource, setRulesyncSource] = useState<string>("bundled");
+  const [rulesyncVersion, setRulesyncVersion] = useState<string | null>(null);
+  const [latestVersion, setLatestVersion] = useState<string | null>(null);
   const autoInitDone = useRef(false);
 
   useEffect(() => {
     autoInitDone.current = false;
     loadStatus();
     checkRulesyncSource();
+    checkVersions();
   }, [projectDir]);
 
   const checkRulesyncSource = async () => {
     const systemPath = await whichRulesync();
     setRulesyncSource(systemPath ? `system (${systemPath})` : "bundled sidecar");
+  };
+
+  const checkVersions = async () => {
+    // Get current installed version
+    const current = await getRulesyncVersion();
+    setRulesyncVersion(current);
+
+    // Fetch latest release from GitHub (best-effort, ignore failures)
+    try {
+      const res = await fetch(
+        "https://api.github.com/repos/dyoshikawa/rulesync/releases/latest",
+        { headers: { Accept: "application/vnd.github+json" } }
+      );
+      if (res.ok) {
+        const data = await res.json() as { tag_name: string };
+        // Strip leading "v" so both are plain semver for comparison
+        setLatestVersion(data.tag_name.replace(/^v/, ""));
+      }
+    } catch {
+      // No network — silently skip
+    }
   };
 
   const loadStatus = async () => {
@@ -142,12 +167,32 @@ export default function Dashboard() {
           </p>
         </div>
 
-        {/* rulesync source badge */}
-        <div className="mb-4 flex items-center gap-2">
+        {/* rulesync version row */}
+        <div className="mb-4 flex items-center gap-2 flex-wrap">
           <span className="text-xs text-gray-600">rulesync:</span>
           <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400 font-mono">
             {rulesyncSource}
           </span>
+          {rulesyncVersion && (
+            <span className="text-xs px-2 py-0.5 rounded bg-gray-800 text-gray-400 font-mono">
+              v{rulesyncVersion}
+            </span>
+          )}
+          {/* Update badge — shown when a newer version is available */}
+          {rulesyncVersion && latestVersion && rulesyncVersion !== latestVersion && (
+            <a
+              href="https://github.com/dyoshikawa/rulesync/releases/latest"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs px-2 py-0.5 rounded bg-yellow-900/60 border border-yellow-700 text-yellow-300 hover:bg-yellow-800/60 transition-colors"
+              title={`v${latestVersion} is available`}
+            >
+              ↑ v{latestVersion} available
+            </a>
+          )}
+          {rulesyncVersion && latestVersion && rulesyncVersion === latestVersion && (
+            <span className="text-xs text-green-600" title="Up to date">✓ up to date</span>
+          )}
         </div>
 
         {/* Config status */}

@@ -22,6 +22,11 @@ export async function whichRulesync(): Promise<string | null> {
   return invoke<string | null>("which_rulesync");
 }
 
+/** Runs `rulesync --version` and returns the version string (e.g. "7.10.0"). */
+export async function getRulesyncVersion(): Promise<string | null> {
+  return invoke<string | null>("get_rulesync_version");
+}
+
 // ─── File System ─────────────────────────────────────────────────────────────
 
 export async function openDirectory(): Promise<string | null> {
