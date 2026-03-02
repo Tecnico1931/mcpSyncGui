@@ -2,19 +2,12 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAppStore } from "../store/useAppStore";
 import { pathExists, readFile, writeFile, runRulesync } from "../lib/tauri";
 import { ALL_TARGETS, ALL_FEATURES } from "../types";
-import type { RulesyncConfig, RulesyncFeatures } from "../types";
+import type { RulesyncConfig } from "../types";
 import OutputLog from "./OutputLog";
 
 const DEFAULT_CONFIG: RulesyncConfig = {
   targets: ["claudecode"],
-  features: {
-    rules: true,
-    ignore: true,
-    mcp: false,
-    commands: false,
-    subagents: false,
-    skills: false,
-  },
+  features: ["rules", "ignore"],
   baseDirs: [],
   delete: false,
   verbose: false,
@@ -47,7 +40,20 @@ export default function Config() {
           .replace(/\/\/.*$/gm, "")
           .replace(/\/\*[\s\S]*?\*\//g, "");
         const parsed: RulesyncConfig = JSON.parse(clean);
-        setConfig({ ...DEFAULT_CONFIG, ...parsed });
+
+        // Normalise features: rulesync writes string[] but old configs may
+        // have an object like { rules: true, mcp: false }.
+        let features: string[] = DEFAULT_CONFIG.features ?? [];
+        if (Array.isArray(parsed.features)) {
+          features = parsed.features;
+        } else if (parsed.features && typeof parsed.features === "object") {
+          // Migrate from boolean-object format
+          features = Object.entries(parsed.features)
+            .filter(([, v]) => v === true)
+            .map(([k]) => k);
+        }
+
+        setConfig({ ...DEFAULT_CONFIG, ...parsed, features });
       } catch {
         setConfig(DEFAULT_CONFIG);
       }
@@ -92,13 +98,13 @@ export default function Config() {
     });
   };
 
-  const toggleFeature = (feat: keyof RulesyncFeatures) => {
+  const toggleFeature = (feat: string) => {
+    const features = config.features ?? [];
     setConfig({
       ...config,
-      features: {
-        ...config.features,
-        [feat]: !config.features?.[feat],
-      },
+      features: features.includes(feat)
+        ? features.filter((f) => f !== feat)
+        : [...features, feat],
     });
   };
 
@@ -179,7 +185,7 @@ export default function Config() {
                 <CheckItem
                   key={feat}
                   label={feat}
-                  checked={config.features?.[feat] ?? false}
+                  checked={(config.features ?? []).includes(feat)}
                   onChange={() => toggleFeature(feat)}
                 />
               ))}

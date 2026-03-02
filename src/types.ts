@@ -24,6 +24,7 @@ export interface OutputLine {
   ts: number;
 }
 
+// Local UI state for feature checkboxes (Generate / Import / Fetch screens)
 export interface RulesyncFeatures {
   rules?: boolean;
   ignore?: boolean;
@@ -31,41 +32,43 @@ export interface RulesyncFeatures {
   commands?: boolean;
   subagents?: boolean;
   skills?: boolean;
+  hooks?: boolean;
 }
 
+// rulesync.jsonc on disk — features is a string array in current rulesync
 export interface RulesyncConfig {
   targets?: string[];
-  features?: RulesyncFeatures;
+  features?: string[];
   baseDirs?: string[];
   delete?: boolean;
   verbose?: boolean;
   global?: boolean;
 }
 
+// Valid targets from current rulesync CLI
 export const ALL_TARGETS = [
-  "aider",
-  "amp",
-  "bolt",
-  "cline",
+  "agentsmd",
+  "agentsskills",
+  "antigravity",
+  "augmentcode",
+  "augmentcode-legacy",
   "claudecode",
-  "codex",
-  "continue",
+  "claudecode-legacy",
+  "cline",
+  "codexcli",
   "copilot",
   "cursor",
-  "emacs",
-  "gemini-cli",
+  "factorydroid",
+  "geminicli",
   "goose",
-  "jetbrains",
-  "lovable",
-  "neovim",
-  "pear",
-  "qodo",
+  "junie",
+  "kilo",
+  "kiro",
+  "opencode",
+  "qwencode",
   "replit",
   "roo",
-  "sider",
-  "sourcery",
-  "tabnine",
-  "v0",
+  "warp",
   "windsurf",
   "zed",
 ] as const;
@@ -79,4 +82,5 @@ export const ALL_FEATURES: (keyof RulesyncFeatures)[] = [
   "commands",
   "subagents",
   "skills",
+  "hooks",
 ];

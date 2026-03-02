@@ -249,13 +249,7 @@ export default function Dashboard() {
           />
           <StatCard
             label="Features"
-            value={
-              cfg?.features
-                ? Object.values(cfg.features).filter(Boolean).length
-                : hasConfig
-                ? "all"
-                : "—"
-            }
+            value={cfg?.features ? cfg.features.length : hasConfig ? "all" : "—"}
             icon="✦"
           />
           <StatCard label="Rule Files" value={fileCount} icon="📄" />
@@ -283,20 +277,18 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-              {cfg.features && (
+              {cfg.features && cfg.features.length > 0 && (
                 <div className="flex gap-2">
                   <span className="text-gray-500 w-20 flex-shrink-0">Features:</span>
                   <div className="flex flex-wrap gap-1">
-                    {Object.entries(cfg.features)
-                      .filter(([, v]) => v)
-                      .map(([k]) => (
-                        <span
-                          key={k}
-                          className="px-2 py-0.5 bg-gray-800 text-gray-300 rounded text-xs"
-                        >
-                          {k}
-                        </span>
-                      ))}
+                    {cfg.features.map((f) => (
+                      <span
+                        key={f}
+                        className="px-2 py-0.5 bg-gray-800 text-gray-300 rounded text-xs"
+                      >
+                        {f}
+                      </span>
+                    ))}
                   </div>
                 </div>
               )}

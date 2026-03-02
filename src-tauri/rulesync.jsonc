@@ -2,8 +2,8 @@
   "targets": [
     "copilot",
     "cursor",
-    "claudecode",
-    "codexcli"
+    "codexcli",
+    "claudecode"
   ],
   "features": [
     "rules",
@@ -15,13 +15,9 @@
     "hooks"
   ],
   "baseDirs": [
-    "."
+    "./"
   ],
   "delete": true,
   "verbose": false,
-  "silent": false,
-  "global": false,
-  "simulateCommands": false,
-  "simulateSubagents": false,
-  "simulateSkills": false
+  "global": false
 }
