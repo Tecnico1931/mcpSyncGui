@@ -6,7 +6,15 @@ set -e
 
 REPO="dyoshikawa/rulesync"
 DEST="src-tauri/binaries"
-VERSION=$(curl -s "https://api.github.com/repos/$REPO/releases/latest" \
+
+# Use GITHUB_TOKEN if available to avoid rate limits (always set on GitHub Actions)
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  AUTH=(-H "Authorization: token $GITHUB_TOKEN")
+else
+  AUTH=()
+fi
+
+VERSION=$(curl -fsSL "${AUTH[@]}" "https://api.github.com/repos/$REPO/releases/latest" \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'])")
 
 echo "Downloading rulesync $VERSION binaries..."

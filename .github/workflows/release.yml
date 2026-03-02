@@ -47,24 +47,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - platform: macos-latest   # ARM64 — Apple Silicon
-            args: --target aarch64-apple-darwin
-            rust-target: aarch64-apple-darwin
-            label: macOS-arm64
-
-          - platform: macos-13       # Intel
-            args: --target x86_64-apple-darwin
-            rust-target: x86_64-apple-darwin
-            label: macOS-x64
+          - platform: macos-latest   # Universal binary (ARM64 + Intel)
+            args: --target universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+            label: macOS-universal
 
           - platform: ubuntu-22.04
             args: ""
-            rust-target: ""
+            rust-targets: ""
             label: Linux
 
           - platform: windows-latest
             args: ""
-            rust-target: ""
+            rust-targets: ""
             label: Windows
 
     runs-on: ${{ matrix.platform }}
@@ -77,7 +72,7 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.rust-target }}
+          targets: ${{ matrix.rust-targets }}
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -107,6 +102,8 @@ jobs:
       # ── rulesync sidecar binaries ─────────────────────────────────────────
       - name: Download rulesync sidecar binaries
         shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/download-binaries.sh
 
       # ── Build & release ───────────────────────────────────────────────────
@@ -126,8 +123,7 @@ jobs:
 
             | Platform | Installer |
             |----------|-----------|
-            | macOS Apple Silicon | `.dmg` (arm64) |
-            | macOS Intel | `.dmg` (x64) |
+            | macOS (Apple Silicon + Intel) | `.dmg` universal |
             | Windows | `.msi` |
             | Linux | `.AppImage` |
 
