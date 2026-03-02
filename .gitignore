@@ -1,0 +1,10 @@
+node_modules
+dist
+.tauri
+src-tauri/target
+src-tauri/gen
+
+# Sidecar binaries — download with scripts/download-binaries.sh
+src-tauri/binaries/rulesync-*
+src-tauri/binaries/*.exe
+!src-tauri/binaries/.gitkeep
