@@ -28,21 +28,11 @@ TAG="v${VERSION}"
 
 echo "▶ Version: ${TAG}"
 
-# ── 2. Patch tauri.conf.json with the computed version ────────────────────────
-node - <<JS
-const fs = require("fs");
-const path = "${REPO_ROOT}/src-tauri/tauri.conf.json";
-const cfg = JSON.parse(fs.readFileSync(path, "utf8"));
-cfg.version = "${VERSION}";
-fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + "\n");
-console.log("  tauri.conf.json version →", "${VERSION}");
-JS
-
-# ── 3. Download rulesync sidecar binaries ─────────────────────────────────────
+# ── 2. Download rulesync sidecar binaries ─────────────────────────────────────
 echo "▶ Downloading rulesync binaries…"
 bash scripts/download-binaries.sh
 
-# ── 4. Create universal sidecar (lipo arm64 + x64) ───────────────────────────
+# ── 3. Create universal sidecar (lipo arm64 + x64) ───────────────────────────
 echo "▶ Creating universal rulesync sidecar…"
 lipo -create \
   src-tauri/binaries/rulesync-aarch64-apple-darwin \
@@ -50,19 +40,19 @@ lipo -create \
   -output src-tauri/binaries/rulesync-universal-apple-darwin
 chmod +x src-tauri/binaries/rulesync-universal-apple-darwin
 
-# ── 5. Ensure Rust targets are installed ──────────────────────────────────────
+# ── 4. Ensure Rust targets are installed ──────────────────────────────────────
 echo "▶ Checking Rust targets…"
 rustup target add aarch64-apple-darwin x86_64-apple-darwin 2>/dev/null || true
 
-# ── 6. Install JS deps ────────────────────────────────────────────────────────
+# ── 5. Install JS deps ────────────────────────────────────────────────────────
 echo "▶ Installing JS dependencies…"
 npm ci --silent
 
-# ── 7. Build Tauri universal app ──────────────────────────────────────────────
+# ── 6. Build Tauri universal app ──────────────────────────────────────────────
 echo "▶ Building macOS universal app (this takes a few minutes)…"
 npm run tauri build -- --target universal-apple-darwin
 
-# ── 8. Locate build artifacts ─────────────────────────────────────────────────
+# ── 7. Locate build artifacts ─────────────────────────────────────────────────
 BUNDLE_DIR="src-tauri/target/universal-apple-darwin/release/bundle"
 DMG=$(find "$BUNDLE_DIR/dmg" -name "*.dmg" | head -1)
 APP_TAR=$(find "$BUNDLE_DIR/macos" -name "*.tar.gz" | head -1)
@@ -75,7 +65,7 @@ fi
 echo "  DMG:    $DMG"
 [ -n "$APP_TAR" ] && echo "  App.tar: $APP_TAR"
 
-# ── 9. Create GitHub release and upload artifacts ─────────────────────────────
+# ── 8. Create GitHub release and upload artifacts ─────────────────────────────
 echo "▶ Creating GitHub release ${TAG}…"
 
 RELEASE_NOTES="## rulesync GUI ${VERSION}
@@ -98,13 +88,3 @@ gh release create "$TAG" \
 
 echo "✓ Released ${TAG}"
 echo "  https://github.com/$(gh repo view --json nameWithOwner -q .nameWithOwner)/releases/tag/${TAG}"
-
-# ── 10. Restore tauri.conf.json version to 0.0.1 (keep repo clean) ───────────
-node - <<JS
-const fs = require("fs");
-const path = "${REPO_ROOT}/src-tauri/tauri.conf.json";
-const cfg = JSON.parse(fs.readFileSync(path, "utf8"));
-cfg.version = "0.0.1";
-fs.writeFileSync(path, JSON.stringify(cfg, null, 2) + "\n");
-console.log("  tauri.conf.json version restored → 0.0.1");
-JS
