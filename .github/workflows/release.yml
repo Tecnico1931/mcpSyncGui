@@ -1,0 +1,139 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Queue releases — never cancel a running one
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  # ── Compute version (YEAR.MONTH.NN) ───────────────────────────────────────
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute version
+        id: v
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          YEAR=$(date -u +%Y)
+          MONTH=$(date -u +%m)
+          PREFIX="${YEAR}.${MONTH}"
+
+          # Count existing releases for this month
+          COUNT=$(gh release list --limit 200 --json tagName \
+            --jq "[.[].tagName | select(startswith(\"v${PREFIX}.\"))] | length" \
+            2>/dev/null || echo "0")
+
+          N=$((COUNT + 1))
+          VERSION="${PREFIX}.$(printf '%02d' $N)"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Computed version: ${VERSION}"
+
+  # ── Build & publish on every platform ────────────────────────────────────
+  build:
+    needs: version
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest   # ARM64 — Apple Silicon
+            args: --target aarch64-apple-darwin
+            rust-target: aarch64-apple-darwin
+            label: macOS-arm64
+
+          - platform: macos-13       # Intel
+            args: --target x86_64-apple-darwin
+            rust-target: x86_64-apple-darwin
+            label: macOS-x64
+
+          - platform: ubuntu-22.04
+            args: ""
+            rust-target: ""
+            label: Linux
+
+          - platform: windows-latest
+            args: ""
+            rust-target: ""
+            label: Windows
+
+    runs-on: ${{ matrix.platform }}
+    name: Build (${{ matrix.label }})
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ── Rust ──────────────────────────────────────────────────────────────
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      # ── Linux system dependencies ─────────────────────────────────────────
+      - name: Install Linux dependencies
+        if: matrix.platform == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      # ── Node + JS deps ────────────────────────────────────────────────────
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install JS dependencies
+        run: npm ci
+
+      # ── rulesync sidecar binaries ─────────────────────────────────────────
+      - name: Download rulesync sidecar binaries
+        shell: bash
+        run: bash scripts/download-binaries.sh
+
+      # ── Build & release ───────────────────────────────────────────────────
+      - name: Build and publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tagName: v${{ needs.version.outputs.version }}
+          releaseName: v${{ needs.version.outputs.version }}
+          releaseBody: |
+            ## rulesync GUI ${{ needs.version.outputs.version }}
+
+            Desktop GUI for [rulesync](https://github.com/dyoshikawa/rulesync) — generate AI coding agent configs for Claude Code, Cursor, Copilot, and more.
+
+            ### Downloads
+
+            | Platform | Installer |
+            |----------|-----------|
+            | macOS Apple Silicon | `.dmg` (arm64) |
+            | macOS Intel | `.dmg` (x64) |
+            | Windows | `.msi` |
+            | Linux | `.AppImage` |
+
+            > **macOS:** If Gatekeeper blocks the app, right-click → Open.
+            > **Linux:** Make the AppImage executable: `chmod +x *.AppImage`
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+          appVersion: ${{ needs.version.outputs.version }}

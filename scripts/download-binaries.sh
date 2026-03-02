@@ -24,8 +24,11 @@ download "rulesync-darwin-x64"     "rulesync-x86_64-apple-darwin"
 download "rulesync-linux-x64"      "rulesync-x86_64-unknown-linux-gnu"
 download "rulesync-windows-x64.exe" "rulesync-x86_64-pc-windows-msvc.exe"
 
-chmod +x "$DEST/rulesync-aarch64-apple-darwin" \
-         "$DEST/rulesync-x86_64-apple-darwin" \
-         "$DEST/rulesync-x86_64-unknown-linux-gnu"
+# chmod only applies on Unix; safe to skip on Windows
+if [[ "$OSTYPE" != "msys" && "$OSTYPE" != "win32" ]]; then
+  chmod +x "$DEST/rulesync-aarch64-apple-darwin" \
+           "$DEST/rulesync-x86_64-apple-darwin" \
+           "$DEST/rulesync-x86_64-unknown-linux-gnu"
+fi
 
 echo "Done."
